@@ -26,7 +26,7 @@ def classifier_eval(y_test, y_pred):
     return PD, PF, balance, FIR
 
 # CSV 파일 경로를 지정
-csv_file_path ="EQ.csv"
+csv_file_path ="LC.csv"
 
 # CSV 파일을 데이터프레임으로 읽어오기
 df = pd.read_csv(csv_file_path)

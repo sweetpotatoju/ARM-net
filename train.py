@@ -14,6 +14,7 @@ from sklearn.model_selection import KFold
 from sklearn.preprocessing import MinMaxScaler
 from imblearn.over_sampling import SMOTE
 from sklearn.metrics import confusion_matrix
+from tqdm import tqdm
 
 from models.armnet_1h import ARMNetModel as ARMNet1H
 
@@ -42,7 +43,7 @@ def get_args():
         parser.add_argument('--exp_name', default='test', type=str, help='exp name for log & checkpoint')
         # model config
         parser.add_argument('--model', default='armnet', type=str, help='model type, afn, arm etc')
-        parser.add_argument('--nfeat', type=int, default=61, help='the number of features')
+        parser.add_argument('--nfeat', type=int, default=26, help='the number of features')
         parser.add_argument('--nfield', type=int, default=10, help='the number of fields')
         parser.add_argument('--nemb', type=int, default=10, help='embedding size')
         parser.add_argument('--k', type=int, default=3, help='interaction order for hofm/dcn/cin/gcn/gat/xdfm')
@@ -67,7 +68,7 @@ def get_args():
         return args
 
 # CSV 파일 경로를 지정
-csv_file_path ="JDT.csv"
+csv_file_path ="zxing.csv"
 
 # CSV 파일을 데이터프레임으로 읽어오기
 # CSV 파일을 데이터프레임으로 읽어오기 (첫 번째 행을 제외)
@@ -76,6 +77,7 @@ df = pd.read_csv(csv_file_path)
 # 데이터프레임에서 특징(X)과 목표 변수(y) 추출
 X = df.drop(columns=['class'])
 y = df['class']  # 'class' 열을 목표 변수로 사용
+print(X)
 
 
 X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -88,7 +90,7 @@ X_test_Nomalized =scaler.fit_transform(X_test)
 X_test_tensor = torch.FloatTensor(X_test_Nomalized)
 
 # K-겹 교차 검증을 설정합니다
-k = 5 # K 값 (원하는 폴드 수) 설정
+k = 10 # K 값 (원하는 폴드 수) 설정
 kf = KFold(n_splits=k, shuffle=True, random_state=42)
 
 # K-겹 교차 검증 수행
@@ -123,7 +125,6 @@ for train_index, val_index in kf.split(X_train):
     # 입력 데이터 준비 (예: 훈련 데이터)
     # 텐서로 변환
     input_data = {'value': torch.FloatTensor(X_fold_train_resampled), 'label': torch.FloatTensor(y_fold_train_resampled)}
-
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     opt_metric = nn.BCEWithLogitsLoss(reduction='mean')
@@ -135,23 +136,27 @@ for train_index, val_index in kf.split(X_train):
     cudnn.benchmark = True
 
     # 학습
-    n_epochs = 10
+    n_epochs = 100
     report_frequency = max(len(train_loader) // (batch_size * 5), 1)  # 0으로 나누는 것을 방지하기 위해 최소값을 1로 설정
     for epoch in range(1, n_epochs + 1):
-        for iteration, (x_batch, y_batch) in enumerate(train_loader):
+        # tqdm을 사용하여 진행 상황을 시각적으로 표시
+        for iteration, (x_batch, y_batch) in enumerate(tqdm(train_loader, desc=f'Epoch {epoch}')):
             model.train()
             optimizer.zero_grad()
             predictions = model({'value': x_batch})
+            # 출력 레이어에 sigmoid 활성화 함수 추가
             predictions = torch.sigmoid(predictions)
+
             loss = criterion(predictions, y_batch)
             loss.backward()
             optimizer.step()
+
             if iteration % report_frequency == 0:
-                print(f'(epoch) {epoch} (batch) {iteration} (loss) {loss.item():.4f}')
+                # tqdm에서는 진행 상황을 자동으로 표시하므로 이전에 있던 print문은 제거해도 됩니다.
+                pass
 
     # 모델 평가 모드로 전환
     model.eval()
-
     # 새로운 데이터에 대한 예측 수행
     with torch.no_grad():
         new_data = torch.randn((5, 10))  # 새로운 입력 데이터
@@ -179,6 +184,5 @@ print('avg_PD: {}'.format((sum(pd_list) / len(pd_list))))
 print('avg_PF: {}'.format((sum(pf_list) / len(pf_list))))
 print('avg_balance: {}'.format((sum(bal_list) / len(bal_list))))
 print('avg_FIR: {}'.format((sum(fir_list) / len(fir_list))))
-
 
 
