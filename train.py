@@ -83,13 +83,12 @@ X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.2, random_st
 X_train, X_valid, y_train, y_valid = train_test_split(X_temp, y_temp, test_size=0.2, random_state=42)
 
 
-
 scaler = MinMaxScaler()
 X_test_Nomalized =scaler.fit_transform(X_test)
 X_test_tensor = torch.FloatTensor(X_test_Nomalized)
 
 # K-겹 교차 검증을 설정합니다
-k = 5 # K 값 (원하는 폴드 수) 설정
+k = 10 # K 값 (원하는 폴드 수) 설정
 kf = KFold(n_splits=k, shuffle=True, random_state=42)
 
 # K-겹 교차 검증 수행
@@ -121,9 +120,6 @@ for train_index, val_index in kf.split(X_train):
 
     #모델 인스턴스 생성
     model = ARMNet1H(args.nfeat, args.nfield, args.nemb, args.alpha, args.h, args.nemb, args.mlp_nlayer, args.mlp_nhid, args.dropout, args.ensemble, args.dnn_nlayer, args.dnn_nhid)
-    # 입력 데이터 준비 (예: 훈련 데이터)
-    # 텐서로 변환
-    input_data = {'value': torch.FloatTensor(X_fold_train_resampled), 'label': torch.FloatTensor(y_fold_train_resampled)}
 
     criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
