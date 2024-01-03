@@ -17,6 +17,10 @@ class Embedding(nn.Module):
         :param x:   {'id': LongTensor B*F, 'value': FloatTensor B*F}
         :return:    embeddings B*F*E
         """
+        if 'id' not in x:
+            # 'id' 키가 없을 경우, 새로 생성하여 1로 채움
+            x['id'] = torch.ones_like(x['value'], dtype=torch.long)
+
         emb = self.embedding(x['id'])                           # B*F*E
         return emb * x['value'].unsqueeze(2)                    # B*F*E
 
